@@ -1,5 +1,3 @@
-var analyticsData;
-var interval_id;
 
 function createTest() {
     $("#submit").addClass("disabled");
@@ -488,72 +486,6 @@ function fillSummaryTable() {
         });
 }
 
-function loadRequestData(url, y_label) {
-    if (!$("#preset").is(":visible")) {
-        $("#preset").show();
-        $("#analytics").hide();
-        if (analyticsLine != null) {
-            analyticsLine.destroy();
-        }
-    }
-    // if ($("#end_time").html() != "") {
-    //     $("#PP").hide();
-    // }
-    $.get(
-        url, {
-            build_id: build_id,
-            test_name: test_name,
-            lg_type: lg_type,
-            sampler: samplerType,
-            aggregator: aggregator,
-            status: statusType,
-            start_time: $("#start_time").html(),
-            end_time: $("#end_time").html(),
-            low_value,
-            high_value,
-        },
-        function(data) {
-            const lineChartData = data;
-            if (window.presetLine != null) {
-                window.presetLine.destroy();
-            }
-            drawCanvas(y_label, lineChartData);
-            document.getElementById('chartjs-custom-legend').innerHTML = window.presetLine.generateLegend();
-        }
-    );
-}
-
-function displayAnalytics() {
-    console.log("displayAnalytics ***************")
-    $("#preset").hide();
-    analyticsCanvas();
-    $("#analytics").show();
-    if(window.presetLine!=null){
-        window.presetLine.destroy();
-    }
-    if ( ! $("#analytics").is(":visible") ) {
-        console.log("Here")
-    }
-}
-
-function getData(scope, request_name) {
-    if (! $(`#${request_name}_${scope}`).is(":checked")) {
-        findAndRemoveDataSet(`${request_name}_${scope}`);
-    } else {
-        getDataForAnalysis(scope, request_name)
-    }
-}
-
-function findAndRemoveDataSet(dataset_name){
-    for (var i=0; i<analyticsLine.data.datasets.length; i++) {
-        if (analyticsLine.data.datasets[i].label === dataset_name) {
-            analyticsLine.data.datasets.splice(i, 1);
-            analyticsLine.update();
-            break;
-        }
-    }
-}
-
 function switchSampler() {
     samplerType = $("#sampler").val().toUpperCase();
     resizeChart();
@@ -569,168 +501,6 @@ function switchAggregator() {
     resizeChart();
 }
 
-function selectOrUnselectRequests() {
-    if ($('#all_checkbox').is(":checked")) {
-        $('.custom__checkbox').each(function(i, ch) {
-            if (ch.id != "all_checkbox") {
-                $('#' + ch.id).prop('checked', true);
-                updateHiddenProperty(false);
-            }
-        });
-    } else {
-        $('.custom__checkbox').each(function(i, ch) {
-            if (ch.id != "all_checkbox") {
-                $('#' + ch.id).prop('checked', false);
-                updateHiddenProperty(true);
-            }
-        });
-    }
-}
-
-function updateHiddenProperty(hidden) {
-    var ci = window.presetLine;
-    for (let index = 1; index < ci.data.datasets.length; ++index) {
-        var curr = ci.data.datasets[index]._meta;
-        curr = Object.values(curr)[0]
-        curr.hidden = hidden
-    }
-    ci.update();
-}
-
-updateChart = function(e, datasetIndex) {
-    $('#all_checkbox').prop('checked', false);
-    var index = datasetIndex;
-    var ci = e.view.presetLine;
-    var curr = ci.data.datasets[index]._meta;
-    curr = Object.values(curr)[0]
-    curr.hidden = !curr.hidden
-    ci.update();
-};
-
-function analyticsCanvas() {
-    console.log("analyticsCanvas ******************")
-    var analyticsContext=document.getElementById("chart-analytics").getContext("2d");
-    analyticsLine = Chart.Line(analyticsContext, {
-        data: analyticsData,
-        options: {
-            responsive: true,
-            hoverMode: 'index',
-            stacked: false,
-            legend: {
-                display: true,
-                position: 'bottom',
-                labels: {
-                    fontSize: 10,
-                    usePointStyle: false
-                }
-            },
-            title:{
-                display: false,
-            },
-            scales: {
-                yAxes: [{
-                    type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
-                    display: true,
-                    position: "left",
-                    scaleLabel: {
-                        display: true,
-                        labelString: "Response Time, ms"
-                    },
-                    id: "time",
-                }, {
-                    type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
-                    display: true,
-                    position: "right",
-                    scaleLabel: {
-                        display: true,
-                        labelString: "Count"
-                    },
-                    id: "count",
-                    gridLines: {
-                        drawOnChartArea: false, // only want the grid lines for one axis to show up
-                    },
-                }],
-            }
-        }
-    });
-}
-
-function drawCanvas(y_label, chartData) {
-    const presetsContext = document.getElementById("chart-requests").getContext("2d");
-    window.presetLine = Chart.Line(presetsContext, {
-        data: chartData,
-        options: {
-            responsive: true,
-            hoverMode: 'index',
-            stacked: false,
-             legendCallback: function (chart) {
-                var legendHtml = [];
-                for (var i=0; i<chart.data.datasets.length; i++) {
-                    if (chart.data.datasets[i].label != "Active Users") {
-                        var cb = '<div class="d-flex mb-3">';
-                        cb += '<label class="mb-0 w-100 d-flex align-items-center custom-checkbox custom-checkbox__multicolor">'
-                        cb += '<input class="mx-2 custom__checkbox" id="'+ chart.legend.legendItems[i].datasetIndex +'" type="checkbox" checked="true" style="--cbx-color: ' + chart.data.datasets[i].backgroundColor + ';" '
-                        cb += 'onclick="updateChart(event, ' + '\'' + chart.legend.legendItems[i].datasetIndex + '\'' + ')"/>';
-                        cb += '<span class="custom-chart-legend-span"></span>'
-                        cb += chart.data.datasets[i].label;
-                        cb += '</label></div>'
-                        legendHtml.push(cb);
-                    }
-                }
-                return legendHtml.join("");
-            },
-            legend: {
-                display: false,
-                position: 'right',
-                labels: {
-                    fontSize: 10,
-                    usePointStyle: false
-                }
-            },
-            title: {
-                display: false,
-            },
-            scales: {
-                xAxes: [{
-                    gridLines: {
-                        display: false
-                    }
-                }],
-                yAxes: [{
-                    type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
-                    display: true,
-                    position: "left",
-                    scaleLabel: {
-                        display: true,
-                        labelString: y_label
-                    },
-                    id: "response_time",
-                    gridLines: {
-                        borderDash: [2, 1],
-                        color: "#D3D3D3"
-                    },
-                    ticks: {
-                        beginAtZero: true,
-                        maxTicksLimit: 10
-                    },
-                }, {
-                    type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
-                    display: true,
-                    position: "right",
-                    gridLines: {
-                        display: false
-                    },
-                    ticks: {
-                        beginAtZero: true,
-                        maxTicksLimit: 10
-                    },
-                    id: "active_users",
-                }],
-            }
-        }
-    });
-}
-
 function fillErrorTable() {
     var start_time = $("#start_time").html()
     var end_time = $("#end_time").html()
@@ -740,42 +510,12 @@ function fillErrorTable() {
     })
 }
 
-function getDataForAnalysis(metric, request_name) {
-$.get(
-  '/api/v1/backend_performance/charts/requests/data',
-  {
-    scope: request_name,
-    metric: metric,
-    build_id: build_id,
-    test_name: test_name,
-    lg_type: lg_type,
-    sampler: samplerType,
-    aggregator: aggregator,
-    status: statusType,
-    start_time: $("#start_time").html(),
-    end_time: $("#end_time").html(),
-    low_value: $("#input-slider-range-value-low").html(),
-    high_value: $("#input-slider-range-value-high").html()
-  },
-  function( data ) {
-    if (analyticsLine.data.labels.length == 0 || analyticsLine.data.labels.length != data.labels.length)
-    {
-        analyticsData = data;
-        analyticsCanvas();
-    } else {
-        analyticsLine.data.datasets.push(data.datasets[0]);
-        analyticsLine.update();
-    }
-  }
- );
-}
-
 function resizeChart() {
     if ($("#analytics").is(":visible")) {
         analyticsData = null;
-        analyticsLine.destroy();
-        analyticsCanvas();
-        recalculateAnalytics();
+        // analyticsLine.destroy();
+        // analyticsCanvas();
+        // recalculateAnalytics();
     }
     ["RT", "AR", "HT", "AN"].forEach(item => {
         if ($(`#${item}`).hasClass("active")) {
