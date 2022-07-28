@@ -48,7 +48,7 @@ function updateChartUniversal (e, index, component_name) {
     let curr = ci.data.datasets[index]._meta;
     curr = Object.values(curr)[0];
     curr.hidden = !curr.hidden;
-    this.vueVm.registered_components[component_name].chartLine.update();
+    ci.update();
 }
 
 const ResultSummary = {
@@ -266,7 +266,6 @@ const ResultSummary = {
             this.chartLine.update();
         },
         drawCanvas(y_label, chartData) {
-            console.log(1)
             const computedScales = this.chartType === 'analytics' ? analyticScales : {
                 xAxes: [{
                     gridLines: {
@@ -311,7 +310,7 @@ const ResultSummary = {
                     hoverMode: 'index',
                     stacked: false,
                     legendCallback: (chart) => {
-                        console.log(2)
+
                         this.itemsListLength = chart.data.datasets.length
                         return chart.data.datasets.map((item, index) => {
                             const computedColor = item.label === 'Active Users' ? 'blue' : item.backgroundColor
