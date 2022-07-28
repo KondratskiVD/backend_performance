@@ -4,7 +4,6 @@
 <meta property="test_name" content="{{ test_data['name'] }}"/>
 <meta property="environment" content="{{ test_data['environment'] }}"/>
 
-<!--<div class="container" id="test_results">-->
 <div class="card card-12 pb-4">
     <div class="card-header">
         <div class="row">
@@ -226,7 +225,7 @@
 {% endif %}
 
 
-<!--</div>-->
+
 {% with test_config = test_data['test_config'] %}
     {% include 'backend_performance:results/config_modal.html' %}
 {% endwith %}

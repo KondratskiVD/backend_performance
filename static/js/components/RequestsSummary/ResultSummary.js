@@ -48,7 +48,7 @@ function updateChartUniversal (e, index, component_name) {
     let curr = ci.data.datasets[index]._meta;
     curr = Object.values(curr)[0];
     curr.hidden = !curr.hidden;
-    ci.update();
+    this.vueVm.registered_components[component_name].chartLine.update();
 }
 
 const ResultSummary = {
@@ -67,18 +67,46 @@ const ResultSummary = {
             chartLine: null,
             selectedTransactions: [],
             selectedMetrics: [],
-            transactionItems: Object.keys(this.analyticsData),
-            metricItems: Object.keys(this.analyticsData["All"]),
+            transactionItems: null,
+            metricItems: null,
             low_value: 0,
             high_value: 100,
+            selectedItemsLength: 0,
+            itemsListLength: 0,
         }
     },
     async mounted() {
+        this.transactionItems = Object.keys(this.analyticsData).filter(item => {
+            if (item !== 'All' && item !== '') return item
+        })
+        this.metricItems = Object.keys(this.analyticsData["All"])
         this.chartContext = document.getElementById('chart-canvas').getContext("2d");
         this.createTimePicker();
         if (this.chartType !== 'analytics') {
             const chartData = await this.getChartData();
             this.chartSwitcher(chartData)
+        }
+    },
+    watch: {
+        // chartLine: {
+        //     deep: true,
+        //     handler() {
+        //         if (this.chartLine) {
+        //             const elements = []
+        //             $('#chartjs-custom-legend .custom__checkbox').each((i, ch) => {
+        //                 if (ch.id !== "all_checkbox") {
+        //                     if ($('#' + ch.id).prop('checked')) elements.push(ch.id)
+        //                 }
+        //             })
+        //             this.selectedItemsLength = elements.length;
+        //             if(this.selectedItemsLength === this.itemsListLength) $("#all_checkbox").prop('checked', true)
+        //         }
+        //     }
+        // }
+    },
+    computed: {
+        isAllSelected() {
+            return (this.selectedItemsLength < this.itemsListLength) && this.selectedItemsLength > 0
         }
     },
     methods: {
@@ -120,25 +148,38 @@ const ResultSummary = {
             this.requestUrl = chartTypes[type].url;
             this.requestMetric = chartTypes[type].metric;
             this.chartLine = null;
+            if (type !== 'analytics') {
+                $('#all_checkbox').prop('checked', true)
+                document.getElementById('chartjs-custom-legend-analytic').innerHTML = '';
+            }
+            this.selectedTransactions = [];
+            this.selectedMetrics = [];
             const chartData = await this.getChartData();
             this.chartSwitcher(chartData)
         },
-        selectOrUnselectRequests() {
-            if ($('#all_checkbox').is(":checked")) {
-                $('.custom__checkbox').each((i, ch) => {
-                    if (ch.id != "all_checkbox") {
-                        $('#' + ch.id).prop('checked', true);
-                        this.updateHiddenProperty(false);
-                    }
-                });
+        selectOrUnselectRequests({ target : { checked}}) {
+            if(checked) {
+                this.updateCbxState(true)
+                this.updateHiddenProperty(false)
             } else {
-                $('.custom__checkbox').each((i, ch) => {
-                    if (ch.id != "all_checkbox") {
-                        $('#' + ch.id).prop('checked', false);
-                        this.updateHiddenProperty(true);
-                    }
-                });
+                this.updateCbxState(false)
+                this.updateHiddenProperty(true)
             }
+        },
+        updateHiddenProperty(hidden) {
+            this.chartLine.data.datasets.forEach((item, index) => {
+                let curr = item._meta;
+                curr = Object.values(curr)[0]
+                curr.hidden = hidden
+            })
+            this.chartLine.update();
+        },
+        updateCbxState(state) {
+            $('.custom__checkbox').each((i, ch) => {
+                if (ch.id !== "all_checkbox") {
+                    $('#' + ch.id).prop('checked', state);
+                }
+            })
         },
         async getChartData(analyticMetric = '', TransactionName = '') {
             const requestBody = {
@@ -187,7 +228,7 @@ const ResultSummary = {
                 })
             } else {
                 this.chartLine.data.datasets = this.chartLine.data.datasets.filter(item => {
-                    const label = item.label.split('_').shift();
+                    const label = item.label.split('_').slice(0, -1).join('_');
                     if (payload.clickedItem.title !== label) {
                         return item
                     }
@@ -225,7 +266,7 @@ const ResultSummary = {
             this.chartLine.update();
         },
         drawCanvas(y_label, chartData) {
-            console.log(chartData)
+            console.log(1)
             const computedScales = this.chartType === 'analytics' ? analyticScales : {
                 xAxes: [{
                     gridLines: {
@@ -270,7 +311,10 @@ const ResultSummary = {
                     hoverMode: 'index',
                     stacked: false,
                     legendCallback: (chart) => {
+                        console.log(2)
+                        this.itemsListLength = chart.data.datasets.length
                         return chart.data.datasets.map((item, index) => {
+                            const computedColor = item.label === 'Active Users' ? 'blue' : item.backgroundColor
                             return `
                                 <div class="d-flex mb-3 float-left mr-3">
                                     <label class="mb-0 w-100 d-flex align-items-center custom-checkbox custom-checkbox__multicolor legend-item">
@@ -279,7 +323,7 @@ const ResultSummary = {
                                             id="${chart.legend.legendItems[index].datasetIndex}"
                                             type="checkbox"
                                             checked="true"
-                                            style="--cbx-color: ${item.backgroundColor}"/>
+                                            style="--cbx-color: ${computedColor}"/>
                                         <span class="custom-chart-legend-span"></span>
                                         ${item.label}
                                     </label>
@@ -343,23 +387,26 @@ const ResultSummary = {
                     </div>
                     <ul class="custom-tabs nav nav-pills mr-3" id="pills-tab" role="tablist">
                         <li class="nav-item" role="presentation">
-                            <a class="active"
-                               id="RT"
+                            <a id="RT"
+                               class="font-h5 font-uppercase active"
                                @click="setChartType('summary')"
                                data-toggle="pill">Responses</a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a  id="AR"
+                                class="font-h5 font-uppercase"
                                 @click="setChartType('average')"
                                 data-toggle="pill">Average</a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a  id="TPS"
+                                class="font-h5 font-uppercase"  
                                 @click="setChartType('hits')"
                                 data-toggle="pill">TPS</a>
                         </li>
                         <li class="nav-item" role="presentation">
                             <a  id="AN"
+                                class="font-h5 font-uppercase"
                                 @click="setChartType('analytics')"
                                 data-toggle="pill">Analytics</a>
                         </li>
@@ -369,15 +416,14 @@ const ResultSummary = {
                     </button>
                 </div>
             </div>
-            <div class="card-body">
             <div class="d-flex mt-3">
                 <div class="chart flex-grow-1 d-flex flex-column justify-content-between">
                     <div class="flex-grow-1">
                         <canvas id="chart-canvas" class="chart-canvas chartjs-render-monitor"
                             style="display: block; height: 450px; width: 100%;"></canvas>
                     </div>
-                    <div class="row">
-                        <div class="col tab-content">
+                    <div class="row pr-4 pl-2">
+                        <div class="col">
                             <label class="w-100 mb-0 font-h5 font-semibold">
                                 Time picker
                             </label>
@@ -394,6 +440,7 @@ const ResultSummary = {
                         <div class="d-flex flex-column p-3">
                             <label
                                 class="mb-0 w-100 d-flex align-items-center custom-checkbox custom-checkbox__multicolor"
+                                :class="{ 'custom-checkbox__minus': isAllSelected }"
                                 for="all_checkbox">
                                 <input
                                     class="mx-2 custom__checkbox"
@@ -404,23 +451,30 @@ const ResultSummary = {
                             </label>
                         </div>
                         <hr class="my-0">
-                        <div id="chartjs-custom-legend" class="custom-chart-legend d-flex flex-column px-3 py-3"></div>
+                        <div id="chartjs-custom-legend" 
+                            class="custom-chart-legend d-flex flex-column px-3 py-3"
+                            style="height: 400px; overflow: scroll;"
+                        ></div>
                     </div>
                     <div v-else>
-                        <h4>Transaction/Request</h4>
-                        <dropdown-analytic
-                            @select-items="setTransactions"
-                            :items-list="transactionItems"
-                        ></dropdown-analytic>
-                        <h4>Metrics</h4>
-                        <dropdown-analytic
-                            @select-items="setMetrics"
-                            :items-list="metricItems"
-                        ></dropdown-analytic>
+                        <p class="font-h5 font-bold py-3 px-4 text-gray-800">DATA FILTER</p>
+                        <hr class="my-0">
+                        <div class="py-3 px-4">
+                            <p class="font-h5 font-bold mb-2 text-gray-800">Transaction/Request</p>
+                            <dropdown-analytic
+                                @select-items="setTransactions"
+                                :items-list="transactionItems"
+                            ></dropdown-analytic>
+                            <p class="font-h5 font-bold mb-2 mt-3 text-gray-800">Metrics</p>
+                            <dropdown-analytic
+                                @select-items="setMetrics"
+                                :items-list="metricItems"
+                            ></dropdown-analytic>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div id="chartjs-custom-legend-analytic" class="d-grid grid-column-7"></div>
+            <div id="chartjs-custom-legend-analytic" style="margin-top: 33px" class="d-grid grid-column-7"></div>
         </div>
     `
 }

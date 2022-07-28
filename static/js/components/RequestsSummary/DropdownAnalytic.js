@@ -6,11 +6,11 @@ const DropdownAnalytic = {
         },
         showAllCbx: {
             type: Boolean,
-            default: false
+            default: true
         },
         showSearch: {
             type: Boolean,
-            default: false
+            default: true
         },
         instance_name: {
             type: String
@@ -45,8 +45,12 @@ const DropdownAnalytic = {
             if(this.showAllCbx) {
                 this.$refs[this.refSearchId].checked = this.selectedItems.length === this.itemsList.length ? true : false;
             }
-            this.$emit('select-items', { selectedItems: this.selectedItems, clickedItem: this.clickedItem});
         }
+    },
+    mounted() {
+        $(".dropdown-menu.close-outside").on("click", function (event) {
+            event.stopPropagation();
+        });
     },
     methods: {
         handlerSelectAll() {
@@ -60,17 +64,19 @@ const DropdownAnalytic = {
             this.clickedItem = {
                 title, isChecked: e.target.checked
             }
+            this.$emit('select-items', { selectedItems: this.selectedItems, clickedItem: this.clickedItem});
         }
     },
     template: `
         <div id="complexList" class="complex-list">
-            <button class="btn btn-select dropdown-toggle" type="button"
+            <button class="btn btn-select dropdown-toggle text-left w-100" type="button"
                 data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                <span v-if="selectedItems.length > 0" class="complex-list_filled">{{ selectedItems.length }} selected</span>
-                <span v-else class="complex-list_empty">Select Step</span>
+                <span v-if="selectedItems.length > 0" 
+                    class="complex-list_filled d-inline-block"
+                    style="width: calc(100% - 26px);">{{ selectedItems.length }} selected</span>
+                    <span v-else class="complex-list_empty d-inline-block" style="width: calc(100% - 26px);">Select</span>
             </button>
-            <div class="dropdown-menu"
-                :class="{'close-outside': closeOnItem}">
+            <div class="dropdown-menu close-outside">
                 <div v-if="itemsList.length > 4 && showSearch" class="px-3 pb-2 search-group">
                     <div class="custom-input custom-input_search__sm position-relative">
                         <input
